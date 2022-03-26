@@ -125,6 +125,19 @@ func EnsureDisk(cfg Config) error {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to run %v: %q: %w", cmd.Args, string(out), err)
 	}
+	diskSize, _ = units.RAMInBytes(*cfg.LimaYAML.Data)
+	if diskSize == 0 {
+		return nil
+	}
+	dataDisk := filepath.Join(cfg.InstanceDir, filenames.DataDisk)
+	if _, err := os.Stat(dataDisk); errors.Is(err, os.ErrNotExist) {
+		args = []string{"create", "-f", "qcow2"}
+		args = append(args, dataDisk, strconv.Itoa(int(diskSize)))
+		cmd := exec.Command("qemu-img", args...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("failed to run %v: %q: %w", cmd.Args, string(out), err)
+		}
+	}
 	return nil
 }
 
@@ -422,6 +435,7 @@ func Cmdline(cfg Config) (string, []string, error) {
 	// Disk
 	baseDisk := filepath.Join(cfg.InstanceDir, filenames.BaseDisk)
 	diffDisk := filepath.Join(cfg.InstanceDir, filenames.DiffDisk)
+	dataDisk := filepath.Join(cfg.InstanceDir, filenames.DataDisk)
 	isBaseDiskCDROM, err := iso9660util.IsISO9660(baseDisk)
 	if err != nil {
 		return "", nil, err
@@ -436,6 +450,9 @@ func Cmdline(cfg Config) (string, []string, error) {
 		args = append(args, "-drive", fmt.Sprintf("file=%s,if=virtio", diffDisk))
 	} else if !isBaseDiskCDROM {
 		args = append(args, "-drive", fmt.Sprintf("file=%s,if=virtio", baseDisk))
+	}
+	if _, err := os.Stat(dataDisk); err == nil {
+		args = append(args, "-drive", fmt.Sprintf("file=%s,if=virtio", dataDisk))
 	}
 	// cloud-init
 	switch *y.Arch {

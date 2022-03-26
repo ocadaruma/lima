@@ -32,6 +32,7 @@ const (
 	Kernel             = "kernel"
 	KernelCmdline      = "kernel.cmdline"
 	Initrd             = "initrd"
+	DataDisk           = "datadisk"
 	QemuPID            = "qemu.pid"
 	QMPSock            = "qmp.sock"
 	SerialLog          = "serial.log"
